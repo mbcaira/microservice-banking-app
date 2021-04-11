@@ -1,0 +1,353 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: accountdb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accountdb
+spec:
+  selector:
+    app: accountdb
+  ports:
+    - port: 3306
+      targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accountdb
+spec:
+  selector:
+    matchLabels:
+      app: accountdb
+  template:
+    metadata:
+      labels:
+        app: accountdb
+    spec:
+      containers:
+        - name: accountdb
+          image: mcanaran/coe692:accountdb
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: storage
+              mountPath: /data/accountdb
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: accountdb-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accounts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: accounts
+  template:
+    metadata:
+      labels:
+        app: accounts
+    spec:
+      containers:
+        - name: accounts
+          image: mcanaran/coe692:accountWebApp
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_URL
+              value: accountdb:3306
+            - name: kubeMQAddress
+              value: 10.3.240.147:50000
+          imagePullPolicy: Always
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: customerdb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customerdb
+spec:
+  selector:
+    app: customerdb
+  ports:
+    - port: 3306
+      targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customerdb
+spec:
+  selector:
+    matchLabels:
+      app: customerdb
+  template:
+    metadata:
+      labels:
+        app: customerdb
+    spec:
+      containers:
+        - name: customerdb
+          image: mcanaran/coe692:customerdb
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: storage
+              mountPath: /data/customerdb
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: customerdb-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customers
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customers
+  template:
+    metadata:
+      labels:
+        app: customers
+    spec:
+      containers:
+        - name: customers
+          image: mcanaran/coe692:customerWebApp
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_URL
+              value: customerdb:3306
+            - name: kubeMQAddress
+              value: 10.3.240.147:50000
+          imagePullPolicy: Always
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: transferdb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transferdb
+spec:
+  selector:
+    app: transferdb
+  ports:
+    - port: 3306
+      targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transferdb
+spec:
+  selector:
+    matchLabels:
+      app: transferdb
+  template:
+    metadata:
+      labels:
+        app: transferdb
+    spec:
+      containers:
+        - name: transferdb
+          image: mcanaran/coe692:transferdb
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: storage
+              mountPath: /data/transferdb
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: transferdb-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transfer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transfer
+  template:
+    metadata:
+      labels:
+        app: transfer
+    spec:
+      containers:
+        - name: transfer
+          image: mcanaran/coe692:transferWebApp
+          ports:
+            - containerPort: 8080
+          env:
+            - name: accountService
+              value: accounts:80
+
+            - name: DB_URL
+              value: transferdb:3306
+            - name: kubeMQAddress
+              value: 10.3.240.147:50000
+          imagePullPolicy: Always
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: frontenddb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontenddb
+spec:
+  selector:
+    app: frontenddb
+  ports:
+    - port: 3306
+      targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontenddb
+spec:
+  selector:
+    matchLabels:
+      app: frontenddb
+  template:
+    metadata:
+      labels:
+        app: frontenddb
+    spec:
+      containers:
+        - name: frontenddb
+          image: mcanaran/coe692:frontenddb
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: storage
+              mountPath: /data/frontenddb
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: frontenddb-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: mcanaran/coe692:frontendWebApp
+          ports:
+            - containerPort: 8080
+          env:
+            - name: transferService
+              value: transfer:80
+
+            - name: customerService
+              value: customers:80
+            
+            - name: accountService
+              value: accounts:80
+            
+            - name: DB_URL
+              value: frontenddb:3306            
+            - name: kubeMQAddress
+              value: 10.3.240.147:50000
+          imagePullPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts
+spec:
+  selector:
+    app: accounts
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customers
+spec:
+  selector:
+    app: customers
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transfer
+spec:
+  selector:
+    app: transfer
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: LoadBalancer
